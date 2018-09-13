@@ -92,30 +92,86 @@ extension MWHUD {
         
     }
     
-    private func fadeIn() {
-        
-        let animationClosure = {
-            self.customView?.alpha = 1
-            self.hudView.alpha = 1
-            self.statusLabel.isHidden = true
-            self.imageView.isHidden = true
-        }
-        
-        let completeClosure = {
-            self.hudView.removeFromSuperview()
-            self.hudView.frame = CGRect(x: 0, y: 0, width: self.customView!.frame.width, height: self.customView!.frame.height)
-            self.frontWindow?.addSubview(self.hudView)
-            self.hudView.contentView.addSubview(self.customView!)
-            
-            self.fadeOutTimer = Timer(timeInterval: 0, target:self, selector: #selector(self.dimissHud), userInfo: nil, repeats: false)
-            RunLoop.main.add(self.fadeOutTimer!, forMode: .commonModes)
-        }
+    private func fadeIn(_ type: MWHUDType) {
         
         OperationQueue.main.addOperation {
+            
+            let animationClosure = { (type: MWHUDType) in
+                
+                self.hudView.alpha = 1
+                switch type {
+                case .text:
+                    self.customView?.alpha = 0
+                    self.imageView.alpha = 0
+                    self.statusLabel.alpha = 1
+                    
+                case .textAndimage:
+                    self.customView?.alpha = 0
+                    self.imageView.alpha = 1
+                    self.statusLabel.alpha = 1
+                    
+                case .textAndprogress(let text):
+                    print(text ?? "")
+                    
+                case .textAndhud:
+                    self.customView?.alpha = 0
+                    self.imageView.alpha = 0
+                    self.statusLabel.alpha = 1
+                    
+                case .customView:
+                    self.customView?.alpha = 1
+                    self.statusLabel.alpha = 0
+                    self.imageView.alpha = 0
+                }
+            }
+            
+            let completeClosure = { (type: MWHUDType) in
+                
+                switch type {
+                case .text(let text):
+                    self.customView?.removeFromSuperview()
+                    self.imageView.removeFromSuperview()
+                    self.statusLabel.text = text
+                    
+                case .textAndimage(let text, let image):
+                    self.customView?.removeFromSuperview()
+                    self.imageView.isHidden = false
+                    self.statusLabel.text = text
+                    self.imageView.image = image
+                    
+                case .textAndprogress(let text):
+                    print(text ?? "")
+                    
+                case .textAndhud:
+                    self.customView?.removeFromSuperview()
+                    self.imageView.removeFromSuperview()
+                    self.statusLabel.isHidden = false
+                    
+                case .customView(let view):
+                    if let oldCustomView = self.customView { oldCustomView.removeFromSuperview() }
+                    if let v = view {
+                        self.customView = view
+                        self.hudView.contentView.addSubview(v)
+                        self.customView?.alpha = 1
+                        self.statusLabel.removeFromSuperview()
+                        self.imageView.removeFromSuperview()
+                    }
+                }
+                
+//                self.hudView.removeFromSuperview()
+                self.hudView.frame = CGRect(x: 0, y: 0, width: self.customView!.frame.width, height: self.customView!.frame.height)
+                self.frontWindow?.addSubview(self.hudView)
+                self.hudView.contentView.addSubview(self.customView!)
+                
+                self.dimissHud()
+//                self.fadeOutTimer = Timer(timeInterval: 0, target:self, selector: #selector(self.dimissHud), userInfo: nil, repeats: false)
+//                RunLoop.main.add(self.fadeOutTimer!, forMode: .commonModes)
+            }
+            
             UIView.animate(withDuration: 1.0, delay: 0, options: [.allowUserInteraction , .curveEaseOut], animations: {
-                animationClosure()
+                animationClosure(type)
             }, completion: { bool in
-                completeClosure()
+                completeClosure(type)
             })
         }
     }
@@ -130,27 +186,30 @@ extension MWHUD {
     
     private func dimiss(_ delayTime: TimeInterval) {
         
+        print("dimiss")
+        
         self.fadeOutTimer = nil
         
-        let animationClosure = {
-            self.customView?.alpha = 0
-            self.hudView.alpha = 0
-        }
+//        OperationQueue.main.addOperation {
         
-        let completeClosure = {
-            self.customView?.removeFromSuperview()
-            self.hudView.removeFromSuperview()
-        }
-        
-        OperationQueue.main.addOperation {
+            let animationClosure = {
+                self.customView?.alpha = 0
+                self.hudView.alpha = 0
+            }
+            
+            let completeClosure = {
+                self.customView?.removeFromSuperview()
+                self.customView?.removeFromSuperview()
+            }
+            
             DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + delayTime) {
-                UIView.animate(withDuration: 2.0, delay: 0, options: [.allowUserInteraction , .curveEaseOut], animations: {
+                UIView.animate(withDuration: 1.0, delay: 0, options: [.allowUserInteraction , .curveEaseOut], animations: {
                     animationClosure()
                 }, completion: { bool in
                     completeClosure()
                 })
             }
-        }
+//        }
     }
     
 }
@@ -180,22 +239,19 @@ extension MWHUD {
     
     /// customView
     func show(customView view: UIView) {
-
-        if view.frame.width == 0 || view.frame.height == 0 { return }
-        
-        statusLabel.removeFromSuperview()
-        imageView.removeFromSuperview()
-        if let cv = self.customView { cv.removeFromSuperview() }
-        
-        self.customView = view
-        hudView.contentView.addSubview(view)
-        
-        fadeIn()
+        fadeIn(.customView(view))
     }
     
     func show(text message: String) {
-        imageView.removeFromSuperview()
-        statusLabel.text = text
+        fadeIn(.text(message))
+    }
+    
+    func show(success message: String) {
+        fadeIn(.textAndimage(text: message, image: UIImage(named: "toast_success")))
+    }
+    
+    func show(error message: String) {
+        fadeIn(.textAndimage(text: message, image: UIImage(named: "toast_error")))
     }
     
     func show(activity message: String?) {
@@ -203,14 +259,6 @@ extension MWHUD {
     }
     
     func show(progress: CGFloat, message: String? = "") {
-        
-    }
-    
-    func show(success message: String) {
-        
-    }
-    
-    func show(error message: String) {
         
     }
 }

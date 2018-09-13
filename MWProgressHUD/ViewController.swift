@@ -33,6 +33,7 @@ class ViewController: UIViewController {
             view.backgroundColor = UIColor.red
             view.frame = CGRect(x: 0, y: 0, width: 300, height: 200)
             MWHUD.show(customView: view)
+            count = count + 1
         case 5:
             break
 //            MWHUD.show

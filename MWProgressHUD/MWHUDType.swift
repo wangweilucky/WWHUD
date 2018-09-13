@@ -7,5 +7,14 @@
 //
 
 import Foundation
+import UIKit
 
 typealias MWHUDNoParam = (()->())?
+
+enum MWHUDType {
+    case text(String?)
+    case textAndimage(text: String?, image: UIImage?)
+    case textAndprogress(String?)
+    case textAndhud(String?)
+    case customView(UIView?)
+}

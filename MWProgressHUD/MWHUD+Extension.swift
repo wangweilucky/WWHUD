@@ -48,7 +48,7 @@ extension MWHUD {
     
     /// text
     class func show(text message: String) {
-        
+        MWHUD.shareView.show(text: message)
     }
     
     /// activity + message
